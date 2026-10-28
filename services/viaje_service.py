@@ -14,9 +14,13 @@ ALLOWED_IMAGE_TYPES = {
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 class ViajeService:
+    
     def subir_foto_vehiculo(self, usuario_id, archivo):
+        import os
+        
+        # 1. Validaciones básicas de archivo
         if archivo is None or not archivo.filename:
-            return None, "Debe seleccionar una imagen", 400
+            return None, "Debe seleccionar una imagen en el campo 'foto'", 400
 
         if archivo.mimetype not in ALLOWED_IMAGE_TYPES:
             return None, "La imagen debe ser JPG, PNG o WEBP", 400
@@ -26,7 +30,13 @@ class ViajeService:
         if len(contenido) > MAX_IMAGE_SIZE:
             return None, "La imagen no puede superar los 5 MB", 400
 
+        # 2. Verificar que la URL de Cloudinary exista en el entorno
+        cloudinary_env = os.getenv("CLOUDINARY_URL")
+        if not cloudinary_env:
+            return None, "Error de configuración: CLOUDINARY_URL no está definida en el servidor", 500
+
         try:
+            # Subida a Cloudinary
             resultado = cloudinary.uploader.upload(
                 archivo,
                 folder="campusgo/vehiculos",
@@ -37,10 +47,12 @@ class ViajeService:
             if not url:
                 return None, "Cloudinary no devolvió la URL de la imagen", 502
 
+            # Guardar la URL en la BD
             connection = get_connection()
             try:
                 repository = ViajeRepository(connection)
-                if repository.guardar_foto_vehiculo(usuario_id, url) == 0:
+                filas = repository.guardar_foto_vehiculo(usuario_id, url)
+                if filas == 0:
                     return None, "El usuario no posee perfil de conductor", 404
                 connection.commit()
                 return {"foto_vehiculo_url": url}, "Foto del vehículo actualizada correctamente", 200
@@ -49,11 +61,12 @@ class ViajeService:
                 raise
             finally:
                 connection.close()
-        except Exception as error:
-            if isinstance(error, (KeyError, ValueError)):
-                return None, "No se pudo procesar la imagen", 400
-            raise
 
+        except Exception as error:
+            # Imprime en la consola de Render y retorna el error exacto a Postman
+            print(f"Error detallado en subida: {type(error).__name__} - {str(error)}")
+            return None, f"Error al procesar imagen: {str(error)}", 400
+    
     def obtener_foto_vehiculo(self, usuario_id):
         connection = get_connection()
         try:
