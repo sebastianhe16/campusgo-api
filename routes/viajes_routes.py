@@ -103,3 +103,32 @@ def cambiar_estado_viaje(viaje_id):
     if data is None:
         return error_response(message, code)
     return success_response(data, message, code)
+
+
+@viaje_bp.route("/api/conductor/foto-vehiculo", methods=["POST"])
+@jwt_required()
+def subir_foto_vehiculo():
+    claims = get_jwt()
+    if claims.get("rol") != "CONDUCTOR":
+        return error_response("Se requiere rol CONDUCTOR", 403)
+
+    archivo = request.files.get("foto")
+    data, message, code = ViajeService().subir_foto_vehiculo(
+        get_jwt_identity(), archivo
+    )
+    if data is None:
+        return error_response(message, code)
+    return success_response(data, message, code)
+
+
+@viaje_bp.route("/api/conductor/foto-vehiculo", methods=["GET"])
+@jwt_required()
+def consultar_foto_vehiculo():
+    claims = get_jwt()
+    if claims.get("rol") != "CONDUCTOR":
+        return error_response("Se requiere rol CONDUCTOR", 403)
+
+    data, message, code = ViajeService().obtener_foto_vehiculo(get_jwt_identity())
+    if data is None:
+        return error_response(message, code)
+    return success_response(data, message, code)

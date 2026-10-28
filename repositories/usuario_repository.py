@@ -43,3 +43,21 @@ class UsuarioRepository:
             return cursor.fetchone()
         finally:
             cursor.close()
+            
+    def obtener_foto_por_usuario(self, usuario_id):
+        """
+        Devuelve únicamente los datos necesarios para autorizar
+        y localizar la foto del usuario autenticado.
+        """
+        cursor = self.connection.cursor()
+        try:
+            sql = """
+                SELECT id, foto, estado
+                FROM usuario
+                WHERE id = %s
+                LIMIT 1
+            """
+            cursor.execute(sql, (usuario_id,))
+            return cursor.fetchone()
+        finally:
+            cursor.close()

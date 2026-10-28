@@ -12,6 +12,33 @@ class ViajeRepository:
         finally:
             cursor.close()
 
+    def guardar_foto_vehiculo(self, usuario_id, foto_vehiculo):
+        cursor = self.connection.cursor()
+        try:
+            sql = """
+                UPDATE conductor
+                SET foto_vehiculo = %s
+                WHERE usuario_id = %s
+            """
+            cursor.execute(sql, (foto_vehiculo, usuario_id))
+            return cursor.rowcount
+        finally:
+            cursor.close()
+
+    def obtener_foto_vehiculo_por_usuario(self, usuario_id):
+        cursor = self.connection.cursor()
+        try:
+            sql = """
+                SELECT foto_vehiculo
+                FROM conductor
+                WHERE usuario_id = %s
+            """
+            cursor.execute(sql, (usuario_id,))
+            fila = cursor.fetchone()
+            return fila["foto_vehiculo"] if fila else None
+        finally:
+            cursor.close()
+
     def crear(self, conductor_id, datos):
         cursor = self.connection.cursor()
         try:
@@ -44,6 +71,7 @@ class ViajeRepository:
                 SELECT
                 v.id, v.origen, v.destino, v.fecha, v.hora,
                 v.cupos, v.precio, v.estado,
+                c.foto_vehiculo AS foto_vehiculo_url,
                 CONCAT(u.nombres, ' ', u.apellidos) AS conductor
                 FROM viaje v
                 INNER JOIN conductor c ON c.id = v.conductor_id
@@ -92,7 +120,8 @@ class ViajeRepository:
         try:
             sql = """
             SELECT
-                v.*, c.usuario_id AS conductor_usuario_id
+                v.*, c.usuario_id AS conductor_usuario_id,
+                c.foto_vehiculo AS foto_vehiculo_url
             FROM viaje v
             INNER JOIN conductor c ON c.id = v.conductor_id
             WHERE v.id = %s
@@ -148,9 +177,12 @@ class ViajeRepository:
         cursor = self.connection.cursor()
         try:
             sql = """
-                SELECT id, origen, destino, fecha, hora, cupos, precio, estado
-                FROM viaje
-                WHERE conductor_id = %s
+                  SELECT v.id, v.origen, v.destino, v.fecha, v.hora,
+                      v.cupos, v.precio, v.estado,
+                      c.foto_vehiculo AS foto_vehiculo_url
+                  FROM viaje v
+                  INNER JOIN conductor c ON c.id = v.conductor_id
+                  WHERE v.conductor_id = %s
                 """
             params = [conductor_id]
             if estado:

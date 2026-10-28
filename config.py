@@ -11,4 +11,5 @@ class Config:
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
     MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "campusgo")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "campusgo-clave-secreta-cambiar")
+    CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=2)

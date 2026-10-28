@@ -1,9 +1,70 @@
 from database import get_connection
 from repositories.viaje_repository import ViajeRepository
+import cloudinary
+import cloudinary.uploader
 from datetime import timedelta
 from datetime import datetime, date, timedelta
 
+
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
 class ViajeService:
+    def subir_foto_vehiculo(self, usuario_id, archivo):
+        if archivo is None or not archivo.filename:
+            return None, "Debe seleccionar una imagen", 400
+
+        if archivo.mimetype not in ALLOWED_IMAGE_TYPES:
+            return None, "La imagen debe ser JPG, PNG o WEBP", 400
+
+        contenido = archivo.stream.read(MAX_IMAGE_SIZE + 1)
+        archivo.stream.seek(0)
+        if len(contenido) > MAX_IMAGE_SIZE:
+            return None, "La imagen no puede superar los 5 MB", 400
+
+        try:
+            resultado = cloudinary.uploader.upload(
+                archivo,
+                folder="campusgo/vehiculos",
+                resource_type="image",
+                format=ALLOWED_IMAGE_TYPES[archivo.mimetype],
+            )
+            url = resultado.get("secure_url")
+            if not url:
+                return None, "Cloudinary no devolvió la URL de la imagen", 502
+
+            connection = get_connection()
+            try:
+                repository = ViajeRepository(connection)
+                if repository.guardar_foto_vehiculo(usuario_id, url) == 0:
+                    return None, "El usuario no posee perfil de conductor", 404
+                connection.commit()
+                return {"foto_vehiculo_url": url}, "Foto del vehículo actualizada correctamente", 200
+            except Exception:
+                connection.rollback()
+                raise
+            finally:
+                connection.close()
+        except Exception as error:
+            if isinstance(error, (KeyError, ValueError)):
+                return None, "No se pudo procesar la imagen", 400
+            raise
+
+    def obtener_foto_vehiculo(self, usuario_id):
+        connection = get_connection()
+        try:
+            repository = ViajeRepository(connection)
+            foto = repository.obtener_foto_vehiculo_por_usuario(usuario_id)
+            if foto is None:
+                return None, "No se encontró una foto de vehículo para este conductor", 404
+            return {"foto_vehiculo_url": foto}, "Foto del vehículo obtenida correctamente", 200
+        finally:
+            connection.close()
+
     def crear(self, usuario_id, datos):
         obligatorios = ["origen", "destino", "fecha", "hora", "cupos", "precio"]
         if any(campo not in datos for campo in obligatorios):
