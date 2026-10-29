@@ -5,10 +5,18 @@ class ReservaRepository:
     def obtener_pasajero_id_por_usuario(self, usuario_id):
         cursor = self.connection.cursor()
         try:
+            # 1. Busca si ya existe en la tabla pasajero
             sql = "SELECT id FROM pasajero WHERE usuario_id = %s"
             cursor.execute(sql, (usuario_id,))
             fila = cursor.fetchone()
-            return fila["id"] if fila else None
+            if fila:
+                return fila["id"]
+
+            # 2. Si no existe, lo inserta automáticamente y guarda el cambio
+            sql_insert = "INSERT INTO pasajero (usuario_id) VALUES (%s)"
+            cursor.execute(sql_insert, (usuario_id,))
+            self.connection.commit()
+            return cursor.lastrowid
         finally:
             cursor.close()
 

@@ -37,3 +37,30 @@ def cancelar_reserva(reserva_id):
     if data is None:
         return error_response(message, code)
     return success_response(data, message, code)
+
+from database import get_connection
+from repositories.reserva_repository import ReservaRepository
+
+@reserva_bp.route("/api/pasajeros/registrar", methods=["POST"])
+@jwt_required()
+def registrar_perfil_pasajero():
+    claims = get_jwt()
+    if claims.get("rol") != "PASAJERO":
+        return error_response("Se requiere rol PASAJERO", 403)
+
+    usuario_id = get_jwt_identity()
+    connection = get_connection()
+    try:
+        repo = ReservaRepository(connection)
+        pasajero_id = repo.obtener_pasajero_id_por_usuario(usuario_id)
+        connection.commit()
+        return success_response(
+            {"pasajero_id": pasajero_id, "usuario_id": int(usuario_id)},
+            "Perfil de pasajero activado correctamente",
+            201
+        )
+    except Exception as e:
+        connection.rollback()
+        return error_response(f"Error al registrar pasajero: {str(e)}", 500)
+    finally:
+        connection.close()
